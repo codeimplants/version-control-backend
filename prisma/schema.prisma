@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      String   @default("SUPER_ADMIN")
+  createdAt DateTime @default(now())
+}
+
+model App {
+  id        String   @id @default(uuid())
+  name      String
+  appId     String   @unique
+  apiKey    String   @unique
+  platforms String[]
+  createdAt DateTime @default(now())
+  rules     VersionRule[]
+}
+
+model VersionRule {
+  id              String   @id @default(uuid())
+  appId           String
+  platform        String
+  environment     String
+  minVersion      String
+  latestVersion   String
+  updateType      String
+  blockedVersions String[]
+  killSwitch      Boolean  @default(false)
+  messageConfig   Json
+  createdAt       DateTime @default(now())
+
+  app App @relation(fields: [appId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  action    String
+  entity    String
+  payload   Json
+  createdAt DateTime @default(now())
+}
