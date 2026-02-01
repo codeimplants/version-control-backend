@@ -1,0 +1,31 @@
+import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+
+const prisma = new PrismaClient();
+
+async function main() {
+    const email = 'admin@example.com';
+    const password = 'password123';
+    const hash = await bcrypt.hash(password, 12);
+
+    const admin = await prisma.admin.upsert({
+        where: { email },
+        update: {},
+        create: {
+            email,
+            password: hash,
+            name: 'Super Admin'
+        }
+    });
+
+    console.log('Admin user seeded:', admin.email);
+}
+
+main()
+    .catch((e) => {
+        console.error(e);
+        process.exit(1);
+    })
+    .finally(async () => {
+        await prisma.$disconnect();
+    });

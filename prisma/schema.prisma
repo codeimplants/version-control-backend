@@ -11,41 +11,138 @@ model Admin {
   id        String   @id @default(uuid())
   email     String   @unique
   password  String
+  name      String?
   role      String   @default("SUPER_ADMIN")
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model App {
-  id        String   @id @default(uuid())
-  name      String
-  appId     String   @unique
-  apiKey    String   @unique
-  platforms String[]
-  createdAt DateTime @default(now())
-  rules     VersionRule[]
+  id                String          @id @default(uuid())
+  name              String
+  appId             String          @unique
+  apiKey            String          @unique
+  description       String?
+  platforms         String[]
+  icon              String?
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  rules             VersionRule[]
+  devices           Device[]
+  analytics         AppAnalytics[]
+  maintenanceMode   MaintenanceMode?
+  storeUrls         StoreUrl[]
 }
 
 model VersionRule {
+  id                    String   @id @default(uuid())
+  appId                 String
+  platform              String   // android | ios | web | windows | macos | linux
+  environment           String   // prod | staging | dev
+  minVersion            String   // Minimum supported version (force update if below)
+  latestVersion         String   // Latest available version
+  updateType            String   // soft | force | none
+  blockedVersions       String[] // Specific versions to block
+  killSwitch            Boolean  @default(false)
+  isActive              Boolean  @default(true)
+  priority              Int      @default(0) // Higher priority rules are evaluated first
+  
+  // Message Configuration
+  messageConfig         Json     // { title, message, buttonText, etc. }
+  
+  // Advanced Features
+  rolloutPercentage     Float    @default(100) // Gradual rollout (0-100)
+  startDate             DateTime?
+  endDate               DateTime?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  app                   App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  
+  @@index([appId, platform, environment])
+  @@index([isActive])
+}
+
+model StoreUrl {
+  id          String   @id @default(uuid())
+  appId       String
+  platform    String   // android | ios | web
+  storeUrl    String   // Play Store, App Store, or Web URL
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  app         App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  
+  @@unique([appId, platform])
+}
+
+model MaintenanceMode {
+  id          String   @id @default(uuid())
+  appId       String   @unique
+  isEnabled   Boolean  @default(false)
+  title       String   @default("Under Maintenance")
+  message     String   @default("We are currently performing maintenance. Please check back soon.")
+  estimatedEnd DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  app         App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+}
+
+model Device {
   id              String   @id @default(uuid())
   appId           String
+  deviceId        String   // Unique device identifier
+  platform        String
+  osVersion       String?
+  appVersion      String
+  buildNumber     String?
+  lastCheckIn     DateTime @default(now())
+  firstSeen       DateTime @default(now())
+  isActive        Boolean  @default(true)
+  metadata        Json?    // Additional device info
+  
+  app             App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  
+  @@unique([appId, deviceId])
+  @@index([appId, platform])
+  @@index([lastCheckIn])
+}
+
+model AppAnalytics {
+  id              String   @id @default(uuid())
+  appId           String
+  date            DateTime @default(now())
   platform        String
   environment     String
-  minVersion      String
-  latestVersion   String
-  updateType      String
-  blockedVersions String[]
-  killSwitch      Boolean  @default(false)
-  messageConfig   Json
-  createdAt       DateTime @default(now())
-
-  app App @relation(fields: [appId], references: [id])
+  version         String
+  eventType       String   // version_check | update_soft | update_force | kill_switch | blocked
+  deviceId        String?
+  metadata        Json?
+  
+  app             App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  
+  @@index([appId, date])
+  @@index([appId, eventType])
+  @@index([platform, version])
 }
 
 model AuditLog {
   id        String   @id @default(uuid())
   adminId   String
-  action    String
-  entity    String
+  adminEmail String?
+  action    String   // CREATE | UPDATE | DELETE | LOGIN | etc.
+  entity    String   // App | VersionRule | MaintenanceMode | etc.
+  entityId  String?
   payload   Json
+  ipAddress String?
+  userAgent String?
   createdAt DateTime @default(now())
+  
+  @@index([adminId])
+  @@index([entity, action])
+  @@index([createdAt])
 }
