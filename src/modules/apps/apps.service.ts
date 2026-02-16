@@ -78,7 +78,7 @@ export class AppsService {
         if (!app) throw new NotFoundException('App not found');
 
         return {
-            appId: app.appId,
+            appId: (app as any).appId,
             name: app.name,
             totalRules: rulesCount,
             totalDevices: devicesCount,

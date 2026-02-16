@@ -21,6 +21,7 @@ model Admin {
 model App {
   id                String          @id @default(uuid())
   name              String
+  appId             String?
   minVersionIos     String?
   minVersionAndroid String?
   apiKey            String          @unique
