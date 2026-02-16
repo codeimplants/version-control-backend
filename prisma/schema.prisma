@@ -100,7 +100,7 @@ model Device {
   deviceId        String   // Unique device identifier
   platform        String
   osVersion       String?
-  appVersion      String
+  appVersion      String?
   buildNumber     String?
   lastCheckIn     DateTime @default(now())
   firstSeen       DateTime @default(now())
@@ -120,7 +120,7 @@ model AppAnalytics {
   date            DateTime @default(now())
   platform        String
   environment     String
-  version         String
+  version         String?
   eventType       String   // version_check | update_soft | update_force | kill_switch | blocked
   deviceId        String?
   metadata        Json?
