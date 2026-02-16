@@ -25,8 +25,8 @@ export class VersionCheckDto {
   platform: Platform;
 
   @IsString()
-  @IsNotEmpty()
-  currentVersion: string;
+  @IsOptional()
+  currentVersion?: string;
 
   @IsString()
   @IsOptional()

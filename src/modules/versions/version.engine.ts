@@ -19,7 +19,7 @@ export interface MaintenanceMode {
 }
 
 interface EvaluationContext {
-    currentVersion: string;
+    currentVersion?: string;
     buildNumber?: string;
     deviceId?: string;
 }
@@ -88,7 +88,7 @@ export class VersionEngine {
         }
 
         // 5. Blocked Versions
-        if (rule.blockedVersions?.includes(context.currentVersion)) {
+        if (context.currentVersion && rule.blockedVersions?.includes(context.currentVersion)) {
             return {
                 status: 'BLOCKED',
                 title: rule.messageConfig?.blockedTitle || 'Version Blocked',
@@ -105,18 +105,19 @@ export class VersionEngine {
 
         // Handle updates when below latest version but above min version
         // Version Range Comparisons
-        const isBelowLatest = this.compareVersions(context.currentVersion, rule.latestVersion) < 0;
+        // Handle updates when below latest version or if current version is missing
+        const isBelowLatest = !context.currentVersion || this.compareVersions(context.currentVersion, rule.latestVersion) < 0;
 
-        // Handle updates when below latest version but above min version
         if (isBelowLatest) {
             if (rule.updateType === 'soft') {
                 return {
                     status: 'SOFT_UPDATE',
-                    title: rule.messageConfig?.softTitle || 'Update Available',
+                    title: rule.messageConfig?.softTitle || rule.messageConfig?.title || 'Update Available',
                     message:
                         rule.messageConfig?.softMessage ||
+                        rule.messageConfig?.message ||
                         'A new version is available. Update for the best experience.',
-                    buttonText: rule.messageConfig?.softButtonText || 'Update',
+                    buttonText: rule.messageConfig?.softButtonText || rule.messageConfig?.buttonText || 'Update',
                     customMessage: rule.messageConfig,
                     latestVersion: rule.latestVersion,
                     blockVersion: false,
@@ -127,11 +128,12 @@ export class VersionEngine {
             if (rule.updateType === 'force') {
                 return {
                     status: 'FORCE_UPDATE',
-                    title: rule.messageConfig?.forceTitle || 'Update Required',
+                    title: rule.messageConfig?.forceTitle || rule.messageConfig?.title || 'Update Required',
                     message:
                         rule.messageConfig?.forceMessage ||
+                        rule.messageConfig?.message ||
                         'Please update to the latest version to continue.',
-                    buttonText: rule.messageConfig?.forceButtonText || 'Update Now',
+                    buttonText: rule.messageConfig?.forceButtonText || rule.messageConfig?.buttonText || 'Update Now',
                     customMessage: rule.messageConfig,
                     latestVersion: rule.latestVersion,
                     blockVersion: true,
@@ -141,17 +143,26 @@ export class VersionEngine {
         }
 
         // All checks passed
-        return { status: 'NONE' };
+        return {
+            status: 'NONE',
+            latestVersion: rule.latestVersion
+        };
     }
 
     /**
      * Compare two semantic versions
      * Returns: -1 if v1 < v2, 0 if v1 === v2, 1 if v1 > v2
      */
-    static compareVersions(v1: string, v2: string): number {
-        if (!v1 || !v2) return 0;
-        const v1Parts = v1.split('.').map(Number);
-        const v2Parts = v2.split('.').map(Number);
+    static compareVersions(v1: string | undefined | null, v2: string | undefined | null): number {
+        if (!v1 && !v2) return 0;
+        if (!v1) return -1; // Unknown current version is below anything
+        if (!v2) return 1;  // Anything is above unknown latest version
+
+        const v1Clean = v1.replace(/[^0-9.]/g, '');
+        const v2Clean = v2.replace(/[^0-9.]/g, '');
+
+        const v1Parts = v1Clean.split('.').map(Number);
+        const v2Parts = v2Clean.split('.').map(Number);
         const maxLength = Math.max(v1Parts.length, v2Parts.length);
 
         for (let i = 0; i < maxLength; i++) {
@@ -237,6 +248,11 @@ export class VersionEngine {
             }
         }
 
-        return { status: 'NONE' };
+        // Return latestVersion from the highest priority rule if available, even if NONE
+        const topRule = sortedRules.find(r => r.isActive);
+        return {
+            status: 'NONE',
+            latestVersion: topRule?.latestVersion
+        };
     }
 }
