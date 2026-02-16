@@ -21,7 +21,8 @@ model Admin {
 model App {
   id                String          @id @default(uuid())
   name              String
-  appId             String          @unique
+  minVersionIos     String?
+  minVersionAndroid String?
   apiKey            String          @unique
   description       String?
   platforms         String[]
@@ -41,7 +42,7 @@ model VersionRule {
   appId                 String
   platform              String   // android | ios | web | windows | macos | linux
   environment           String   // prod | staging | dev
-  minVersion            String   // Minimum supported version (force update if below)
+  
   latestVersion         String   // Latest available version
   updateType            String   // soft | force | none
   blockedVersions       String[] // Specific versions to block

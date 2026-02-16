@@ -17,8 +17,8 @@ export enum Environment {
 
 export class VersionCheckDto {
   @IsString()
-  @IsNotEmpty()
-  appId: string;
+  @IsOptional()
+  appId?: string;
 
   @IsEnum(Platform)
   @IsNotEmpty()

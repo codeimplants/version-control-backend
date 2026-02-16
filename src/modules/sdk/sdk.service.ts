@@ -40,7 +40,7 @@ export class SdkService {
             const rules = await this.prisma.versionRule.findMany({
                 where: {
                     appId: app.id,
-                    platform: data.platform,
+                    platform: { in: [data.platform, 'all'] },
                     environment: data.environment,
                     isActive: true,
                 },
@@ -53,7 +53,6 @@ export class SdkService {
             const mappedRules: VersionRule[] = rules.map(rule => ({
                 killSwitch: rule.killSwitch,
                 blockedVersions: rule.blockedVersions,
-                minVersion: rule.minVersion,
                 latestVersion: rule.latestVersion,
                 updateType: rule.updateType,
                 messageConfig: rule.messageConfig,
@@ -85,7 +84,21 @@ export class SdkService {
             } : undefined;
 
             let result;
-            if (mappedRules.length > 0) {
+
+            // Global Min Version Check
+            const globalMinVersion = data.platform === 'ios' ? (app as any).minVersionIos :
+                (data.platform === 'android' ? (app as any).minVersionAndroid : null);
+
+            if (globalMinVersion && VersionEngine.compareVersions(data.currentVersion, globalMinVersion) < 0) {
+                result = {
+                    status: 'FORCE_UPDATE',
+                    title: 'Update Required',
+                    message: 'Please update to the latest version to continue using the app.',
+                    buttonText: 'Update Now',
+                    blockVersion: true,
+                    storeUrl,
+                };
+            } else if (mappedRules.length > 0) {
                 result = VersionEngine.evaluateMultiple(
                     mappedRules,
                     evaluationContext,

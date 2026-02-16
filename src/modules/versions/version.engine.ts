@@ -1,7 +1,6 @@
 export interface VersionRule {
     killSwitch: boolean;
     blockedVersions: string[];
-    minVersion: string;
     latestVersion: string;
     updateType: string;
     messageConfig: any;
@@ -102,26 +101,11 @@ export class VersionEngine {
             };
         }
 
-        // 6. Version Range Comparisons
-        const isBelowMin = this.compareVersions(context.currentVersion, rule.minVersion) < 0;
-        const isBelowLatest = this.compareVersions(context.currentVersion, rule.latestVersion) < 0;
 
-        // Force update if below minimum version
-        if (isBelowMin) {
-            return {
-                status: 'FORCE_UPDATE',
-                title: rule.messageConfig?.forceTitle || 'Update Required',
-                message:
-                    rule.messageConfig?.forceMessage ||
-                    'Please update to the latest version to continue using the app.',
-                buttonText: rule.messageConfig?.forceButtonText || 'Update Now',
-                customMessage: rule.messageConfig,
-                latestVersion: rule.latestVersion,
-                minVersion: rule.minVersion,
-                blockVersion: true,
-                storeUrl,
-            };
-        }
+
+        // Handle updates when below latest version but above min version
+        // Version Range Comparisons
+        const isBelowLatest = this.compareVersions(context.currentVersion, rule.latestVersion) < 0;
 
         // Handle updates when below latest version but above min version
         if (isBelowLatest) {
