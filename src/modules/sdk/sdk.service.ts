@@ -85,20 +85,7 @@ export class SdkService {
 
             let result;
 
-            // Global Min Version Check
-            const globalMinVersion = data.platform === 'ios' ? (app as any).minVersionIos :
-                (data.platform === 'android' ? (app as any).minVersionAndroid : null);
-
-            if (globalMinVersion && VersionEngine.compareVersions(data.currentVersion, globalMinVersion) < 0) {
-                result = {
-                    status: 'FORCE_UPDATE',
-                    title: 'Update Required',
-                    message: 'Please update to the latest version to continue using the app.',
-                    buttonText: 'Update Now',
-                    blockVersion: true,
-                    storeUrl,
-                };
-            } else if (mappedRules.length > 0) {
+            if (mappedRules.length > 0) {
                 result = VersionEngine.evaluateMultiple(
                     mappedRules,
                     evaluationContext,
