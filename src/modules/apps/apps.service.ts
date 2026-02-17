@@ -1,22 +1,50 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { v4 as uuid } from 'uuid';
+
+export interface AccessContext {
+    userId: string;
+    role: string;
+}
 
 @Injectable()
 export class AppsService {
     constructor(private prisma: PrismaService) { }
 
-    create(data: any) {
-        return this.prisma.app.create({
-            data: {
-                ...data,
-                apiKey: uuid(),
-            },
+    /** Returns app IDs the user is allowed to access (all for Admin, else from AppCollaborator). */
+    private async getAccessibleAppIds(ctx: AccessContext): Promise<string[] | null> {
+        if (ctx.role === 'ADMIN') return null; // null = no filter
+        const rows = await this.prisma.appCollaborator.findMany({
+            where: { adminId: ctx.userId },
+            select: { appId: true },
         });
+        return rows.map((r) => r.appId);
     }
 
-    async findAll() {
+    async create(data: { collaboratorIds?: string[]; [k: string]: any }, ctx: AccessContext) {
+        if (ctx.role !== 'ADMIN') throw new ForbiddenException('Only admins can create projects');
+        const { collaboratorIds = [], ...appData } = data;
+        const { collaboratorIds: _c, ...rest } = appData as { collaboratorIds?: string[]; [k: string]: any };
+        const app = await this.prisma.app.create({
+            data: {
+                ...rest,
+                apiKey: uuid(),
+            } as any,
+        });
+        if (collaboratorIds.length > 0) {
+            await this.prisma.appCollaborator.createMany({
+                data: collaboratorIds.map((adminId: string) => ({ appId: app.id, adminId })),
+                skipDuplicates: true,
+            });
+        }
+        return this.findOne(app.id, ctx);
+    }
+
+    async findAll(ctx: AccessContext) {
+        const appIds = await this.getAccessibleAppIds(ctx);
+        const where = appIds === null ? {} : { id: { in: appIds } };
         return this.prisma.app.findMany({
+            where,
             include: {
                 _count: {
                     select: {
@@ -24,11 +52,17 @@ export class AppsService {
                         devices: true,
                     },
                 },
+                collaborators: {
+                    select: {
+                        adminId: true,
+                        admin: { select: { id: true, email: true, name: true } },
+                    },
+                },
             },
         });
     }
 
-    async findOne(id: string) {
+    async findOne(id: string, ctx?: AccessContext) {
         const app = await this.prisma.app.findUnique({
             where: { id },
             include: {
@@ -41,20 +75,46 @@ export class AppsService {
                         devices: true,
                     },
                 },
+                collaborators: {
+                    select: {
+                        adminId: true,
+                        admin: { select: { id: true, email: true, name: true } },
+                    },
+                },
             },
         });
         if (!app) throw new NotFoundException('App not found');
         return app;
     }
 
-    async update(id: string, data: any) {
-        return this.prisma.app.update({
+    async update(id: string, data: { collaboratorIds?: string[]; [k: string]: any }, ctx: AccessContext) {
+        if (ctx.role !== 'ADMIN') {
+            // Collaborator can only update app details, not collaborators
+            const { collaboratorIds: _, ...rest } = data;
+            return this.prisma.app.update({
+                where: { id },
+                data: rest,
+            });
+        }
+        const { collaboratorIds, ...appData } = data;
+        const app = await this.prisma.app.update({
             where: { id },
-            data,
+            data: appData,
         });
+        if (collaboratorIds !== undefined) {
+            await this.prisma.appCollaborator.deleteMany({ where: { appId: id } });
+            if (collaboratorIds.length > 0) {
+                await this.prisma.appCollaborator.createMany({
+                    data: collaboratorIds.map((adminId: string) => ({ appId: id, adminId })),
+                    skipDuplicates: true,
+                });
+            }
+        }
+        return this.findOne(id, ctx);
     }
 
-    async remove(id: string) {
+    async remove(id: string, ctx: AccessContext) {
+        if (ctx.role !== 'ADMIN') throw new ForbiddenException('Only admins can delete projects');
         return this.prisma.app.delete({
             where: { id },
         });

@@ -4,10 +4,11 @@ import { AppsModule } from './modules/apps/apps.module';
 import { RulesModule } from './modules/rules/rules.module';
 import { SdkModule } from './modules/sdk/sdk.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { UsersModule } from './modules/users/users.module';
 import { PrismaService } from './database/prisma.service';
 
 @Module({
-    imports: [AuthModule, AppsModule, RulesModule, SdkModule, AnalyticsModule],
+    imports: [AuthModule, AppsModule, RulesModule, SdkModule, AnalyticsModule, UsersModule],
     providers: [PrismaService],
 })
 export class AppModule { }

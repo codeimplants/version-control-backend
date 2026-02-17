@@ -1,76 +1,97 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from '@nestjs/common';
 import { AppsService } from './apps.service';
+import { JwtGuard } from '../../common/guards/jwt.guard';
+import { AppAccessGuard } from '../../common/guards/app-access.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { User } from '../../common/decorators/user.decorator';
 
 @Controller('admin/apps')
+@UseGuards(JwtGuard)
 export class AppsController {
     constructor(private apps: AppsService) { }
 
     @Post()
-    create(@Body() body: any) {
-        return this.apps.create(body);
+    @UseGuards(RolesGuard)
+    @Roles('ADMIN')
+    create(@Body() body: any, @User() user: { id: string; role: string }) {
+        return this.apps.create(body, { userId: user.id, role: user.role });
     }
 
     @Get()
-    findAll() {
-        return this.apps.findAll();
+    findAll(@User() user: { id: string; role: string }) {
+        return this.apps.findAll({ userId: user.id, role: user.role });
     }
 
     @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.apps.findOne(id);
+    @UseGuards(AppAccessGuard)
+    findOne(@Param('id') id: string, @User() user: { id: string; role: string }) {
+        return this.apps.findOne(id, { userId: user.id, role: user.role });
     }
 
     @Put(':id')
-    update(@Param('id') id: string, @Body() body: any) {
-        return this.apps.update(id, body);
+    @UseGuards(AppAccessGuard)
+    update(@Param('id') id: string, @Body() body: any, @User() user: { id: string; role: string }) {
+        return this.apps.update(id, body, { userId: user.id, role: user.role });
     }
 
     @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.apps.remove(id);
+    @UseGuards(AppAccessGuard, RolesGuard)
+    @Roles('ADMIN')
+    remove(@Param('id') id: string, @User() user: { id: string; role: string }) {
+        return this.apps.remove(id, { userId: user.id, role: user.role });
     }
 
     @Get(':id/stats')
+    @UseGuards(AppAccessGuard)
     getStats(@Param('id') id: string) {
         return this.apps.getStats(id);
     }
 
     @Get(':id/rules')
+    @UseGuards(AppAccessGuard)
     getRules(@Param('id') id: string) {
         return this.apps.getRules(id);
     }
 
     @Post(':id/rules')
+    @UseGuards(AppAccessGuard)
     createRule(@Param('id') id: string, @Body() body: any) {
         return this.apps.createRule(id, body);
     }
 
     @Get(':id/store-urls')
+    @UseGuards(AppAccessGuard)
     getStoreUrls(@Param('id') id: string) {
         return this.apps.getStoreUrls(id);
     }
 
     @Post(':id/store-urls')
+    @UseGuards(AppAccessGuard)
     upsertStoreUrl(@Param('id') id: string, @Body() body: any) {
         return this.apps.upsertStoreUrl(id, body);
     }
 
     @Delete(':id/store-urls/:platform')
+    @UseGuards(AppAccessGuard)
     deleteStoreUrl(@Param('id') id: string, @Param('platform') platform: string) {
         return this.apps.deleteStoreUrl(id, platform);
     }
 
     @Get(':id/maintenance')
+    @UseGuards(AppAccessGuard)
     getMaintenance(@Param('id') id: string) {
         return this.apps.getMaintenance(id);
     }
 
     @Put(':id/maintenance')
+    @UseGuards(AppAccessGuard)
     updateMaintenance(@Param('id') id: string, @Body() body: any) {
         return this.apps.updateMaintenance(id, body);
     }
 
     @Patch(':id/maintenance/toggle')
+    @UseGuards(AppAccessGuard)
     toggleMaintenance(@Param('id') id: string) {
         return this.apps.toggleMaintenance(id);
     }

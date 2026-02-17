@@ -1,27 +1,32 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
+import { JwtGuard } from '../../common/guards/jwt.guard';
+import { AppAccessGuard } from '../../common/guards/app-access.guard';
+import { User } from '../../common/decorators/user.decorator';
 
 @Controller('admin/analytics')
+@UseGuards(JwtGuard)
 export class AnalyticsController {
     constructor(private analytics: AnalyticsService) { }
 
     @Get('overview')
-    getOverview() {
-        return this.analytics.getOverview();
+    getOverview(@User() user: { id: string; role: string }) {
+        return this.analytics.getOverview({ userId: user.id, role: user.role });
     }
 
     @Get('apps/:appId')
+    @UseGuards(AppAccessGuard)
     getByApp(@Param('appId') appId: string) {
         return this.analytics.getByApp(appId);
     }
 
     @Get('version-checks')
-    getVersionChecks() {
-        return this.analytics.getVersionChecks();
+    getVersionChecks(@User() user: { id: string; role: string }) {
+        return this.analytics.getVersionChecks({ userId: user.id, role: user.role });
     }
 
     @Get('platform-distribution')
-    getPlatformDistribution() {
-        return this.analytics.getPlatformDistribution();
+    getPlatformDistribution(@User() user: { id: string; role: string }) {
+        return this.analytics.getPlatformDistribution({ userId: user.id, role: user.role });
     }
 }

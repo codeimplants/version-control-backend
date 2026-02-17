@@ -12,30 +12,44 @@ model Admin {
   email     String   @unique
   password  String
   name      String?
-  role      String   @default("SUPER_ADMIN")
+  role      String   @default("ADMIN") // ADMIN | COLLABORATOR
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  appCollaborators AppCollaborator[]
+}
+
+model AppCollaborator {
+  id        String   @id @default(uuid())
+  appId     String
+  adminId   String
+  createdAt DateTime @default(now())
+  app       App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  @@unique([appId, adminId])
+  @@index([adminId])
+  @@index([appId])
 }
 
 model App {
-  id                String          @id @default(uuid())
+  id                String             @id @default(uuid())
   name              String
   appId             String?
   minVersionIos     String?
   minVersionAndroid String?
-  apiKey            String          @unique
+  apiKey            String             @unique
   description       String?
   platforms         String[]
   icon              String?
-  isActive          Boolean         @default(true)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime          @updatedAt
   rules             VersionRule[]
   devices           Device[]
   analytics         AppAnalytics[]
   maintenanceMode   MaintenanceMode?
   storeUrls         StoreUrl[]
+  collaborators     AppCollaborator[]
 }
 
 model VersionRule {
