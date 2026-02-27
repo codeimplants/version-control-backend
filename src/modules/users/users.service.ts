@@ -13,7 +13,7 @@ const SALT_ROUNDS = 12;
 
 @Injectable()
 export class UsersService {
-    constructor(private prisma: PrismaService) {}
+    constructor(private prisma: PrismaService) { }
 
     private excludePassword<T extends { password?: string }>(user: T): Omit<T, 'password'> {
         const { password: _, ...rest } = user;
@@ -120,6 +120,9 @@ export class UsersService {
     async remove(id: string) {
         const user = await this.prisma.admin.findUnique({ where: { id } });
         if (!user) throw new NotFoundException('User not found');
+        if (user.role === 'ADMIN') {
+            throw new BadRequestException('Admin users cannot be deleted. Deactivate them instead.');
+        }
         await this.prisma.admin.delete({ where: { id } });
         return { success: true };
     }
@@ -138,5 +141,29 @@ export class UsersService {
                 isActive: true,
             },
         });
+    }
+
+    async updateSelf(id: string, dto: { name?: string; password?: string }) {
+        const user = await this.prisma.admin.findUnique({ where: { id } });
+        if (!user) throw new NotFoundException('User not found');
+
+        const data: { name?: string; password?: string } = {};
+        if (dto.name !== undefined) data.name = dto.name.trim() || undefined;
+        if (dto.password !== undefined && dto.password.length > 0) {
+            data.password = await bcrypt.hash(dto.password, SALT_ROUNDS);
+        }
+
+        const updated = await this.prisma.admin.update({
+            where: { id },
+            data,
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                isActive: true,
+            },
+        });
+        return updated;
     }
 }

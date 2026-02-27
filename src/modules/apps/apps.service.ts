@@ -21,10 +21,10 @@ export class AppsService {
         return rows.map((r) => r.appId);
     }
 
-    async create(data: { collaboratorIds?: string[]; [k: string]: any }, ctx: AccessContext) {
+    async create(data: { collaboratorIds?: string[];[k: string]: any }, ctx: AccessContext) {
         if (ctx.role !== 'ADMIN') throw new ForbiddenException('Only admins can create projects');
         const { collaboratorIds = [], ...appData } = data;
-        const { collaboratorIds: _c, ...rest } = appData as { collaboratorIds?: string[]; [k: string]: any };
+        const { collaboratorIds: _c, ...rest } = appData as { collaboratorIds?: string[];[k: string]: any };
         const app = await this.prisma.app.create({
             data: {
                 ...rest,
@@ -46,6 +46,7 @@ export class AppsService {
         return this.prisma.app.findMany({
             where,
             include: {
+                storeUrls: true,
                 _count: {
                     select: {
                         rules: true,
@@ -87,7 +88,7 @@ export class AppsService {
         return app;
     }
 
-    async update(id: string, data: { collaboratorIds?: string[]; [k: string]: any }, ctx: AccessContext) {
+    async update(id: string, data: { collaboratorIds?: string[];[k: string]: any }, ctx: AccessContext) {
         if (ctx.role !== 'ADMIN') {
             // Collaborator can only update app details, not collaborators
             const { collaboratorIds: _, ...rest } = data;
